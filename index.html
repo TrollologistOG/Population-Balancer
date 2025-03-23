@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Horde Population Balancer</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #121212; color: #f0f0f0; padding: 2rem; }
+    h1 { color: #fbc02d; }
+    label, select, input { margin: 0.5rem 0; display: block; font-size: 1rem; }
+    input, select { padding: 0.5rem; width: 100%; max-width: 400px; }
+    button { padding: 0.75rem 1.5rem; background: #fbc02d; color: #121212; border: none; cursor: pointer; font-weight: bold; margin-top: 1rem; }
+    .result, .history { margin-top: 1rem; font-size: 1.1rem; background: #1e1e1e; padding: 1rem; border-radius: 6px; white-space: pre-wrap; }
+    canvas { margin-top: 2rem; max-width: 600px; background: #fff; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Golden Horde Population Balancer</h1>
+  <label for="nation">Nation Name</label>
+  <input type="text" id="nation" placeholder="e.g. Velstrania">
+
+  <label for="population">Raw Population</label>
+  <input type="number" id="population" placeholder="e.g. 10297000000">
+
+  <label for="government">Government Type</label>
+  <select id="government">
+    <option>Democracy</option>
+    <option>Autocracy</option>
+    <option>Theocracy</option>
+    <option>Corporate State</option>
+    <option>Military Junta</option>
+    <option>Anarchist Collective</option>
+  </select>
+
+  <button onclick="calculatePopulation()">Normalize Population</button>
+
+  <div class="result" id="output">Enter details and click calculate.</div>
+  <div class="history" id="history">Previous Calculations:</div>
+  <canvas id="popChart"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const config = {
+      tierModifiers: {
+        NEW: 2.0,
+        SMALL: 1.5,
+        MEDIUM: 1.1,
+        LARGE: 0.75,
+        MASSIVE: 0.55
+      },
+      governmentModifiers: {
+        "Democracy": 1.0,
+        "Autocracy": 1.1,
+        "Theocracy": 1.05,
+        "Corporate State": 1.15,
+        "Military Junta": 1.2,
+        "Anarchist Collective": 0.9
+      }
+    };
+
+    function classifyTier(pop) {
+      if (pop < 10_000_000) return "NEW";
+      if (pop < 50_000_000) return "SMALL";
+      if (pop < 100_000_000) return "MEDIUM";
+      if (pop < 1_000_000_000) return "LARGE";
+      return "MASSIVE";
+    }
+
+    function applyRandomEvent(pop) {
+      const roll = Math.random();
+      if (roll < 0.05) return { event: "🎉 Prosperity Event! (+10%)", pop: pop * 1.1 };
+      if (roll > 0.95) return { event: "☠️ Plague Event! (-15%)", pop: pop * 0.85 };
+      return { event: "", pop };
+    }
+
+    function calculatePopulation() {
+      const name = document.getElementById('nation').value || 'Unnamed Nation';
+      const rawPop = parseInt(document.getElementById('population').value);
+      const government = document.getElementById('government').value;
+
+      if (!rawPop || rawPop <= 0) {
+        document.getElementById('output').innerText = 'Please enter a valid population.';
+        return;
+      }
+
+      const tier = classifyTier(rawPop);
+      const tierMod = config.tierModifiers[tier];
+      const govMod = config.governmentModifiers[government] || 1.0;
+
+      let adjusted = rawPop * tierMod * govMod;
+      const eventResult = applyRandomEvent(adjusted);
+      adjusted = Math.round(eventResult.pop);
+
+      let resultText = `🌐 ${name}\n`;
+      resultText += `📊 Raw Population: ${rawPop.toLocaleString()}\n`;
+      resultText += `🧮 Tier: ${tier}, Modifier: x${tierMod}\n`;
+      resultText += `🏛️ Government: ${government}, Modifier: x${govMod}\n`;
+      if (eventResult.event) resultText += `${eventResult.event}\n`;
+      resultText += `✅ Final Normalized Population: ${adjusted.toLocaleString()}`;
+
+      document.getElementById('output').innerText = resultText;
+      storeToHistory(name, rawPop, adjusted);
+      updateChart();
+    }
+
+    function storeToHistory(name, raw, normalized) {
+      const history = JSON.parse(localStorage.getItem('popHistory') || '[]');
+      history.push({ name, raw, normalized });
+      localStorage.setItem('popHistory', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem('popHistory') || '[]');
+      const display = history.map(h => `• ${h.name}: Raw ${h.raw.toLocaleString()} ➜ Normalized ${h.normalized.toLocaleString()}`).join("\n");
+      document.getElementById('history').innerText = "Previous Calculations:\n" + display;
+    }
+
+    function updateChart() {
+      const history = JSON.parse(localStorage.getItem('popHistory') || '[]');
+      const labels = history.map(h => h.name);
+      const rawData = history.map(h => h.raw);
+      const normData = history.map(h => h.normalized);
+
+      if (window.popChartInstance) window.popChartInstance.destroy();
+
+      const ctx = document.getElementById('popChart').getContext('2d');
+      window.popChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Raw Population',
+              data: rawData,
+              backgroundColor: 'rgba(255, 99, 132, 0.6)'
+            },
+            {
+              label: 'Normalized Population',
+              data: normData,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    renderHistory();
+    updateChart();
+  </script>
+</body>
+</html>
