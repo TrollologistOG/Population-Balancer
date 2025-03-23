@@ -7,8 +7,8 @@ A web-based nation management tool for normalizing population sizes across a var
 ## ✨ Features
 
 - 📊 **Dynamic Tier System** – Scales based on population class:
-  - NEW (<10M): ×3.0
-  - SMALL (10M–50M): ×2.0
+  - NEW (<10M): ×5.0
+  - SMALL (10M–50M): ×3.5
   - MEDIUM (50M–100M): ×1.2
   - LARGE (100M–1B): ×0.75
   - MASSIVE (>1B): ×0.55
